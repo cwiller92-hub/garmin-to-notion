@@ -8,7 +8,7 @@ from notion_client import Client as NotionClient
 from src.helpers import get_garmin_client, get_notion_client
 
 # Your local time zone, replace with the appropriate one if needed
-local_tz = pytz.timezone('America/Toronto')
+local_tz = pytz.timezone('Europe/Berlin')
 
 ACTIVITY_ICONS = {
     "Barre": "https://img.icons8.com/?size=100&id=66924&format=png&color=000000",
@@ -196,7 +196,11 @@ def activity_needs_update(existing_activity: dict, new_activity: dict) -> bool:
 
 def create_activity(notion_client: NotionClient, database_id: str, activity: dict) -> None:
     # Create a new activity in the Notion database
-    activity_date = activity.get('startTimeGMT')
+    activity_date_local = (
+        datetime.strptime(activity.get('startTimeGMT'), '%Y-%m-%d %H:%M:%S')
+        .replace(tzinfo=UTC)
+        .astimezone(pytz.timezone('Europe/Berlin'))
+    )
     activity_name = format_entertainment(activity.get('activityName', 'Unnamed Activity'))
     activity_type, activity_subtype = format_activity_type(
         activity.get('activityType', {}).get('typeKey', 'Unknown'),
@@ -207,7 +211,7 @@ def create_activity(notion_client: NotionClient, database_id: str, activity: dic
     icon_url = ACTIVITY_ICONS.get(activity_subtype if activity_subtype != activity_type else activity_type)
 
     properties = {
-        "Date": {"date": {"start": activity_date}},
+       "Date": {"date": {"start": activity_date_local.isoformat()}},
         "Activity Type": {"select": {"name": activity_type}},
         "Subactivity Type": {"select": {"name": activity_subtype}},
         "Activity Name": {"title": [{"text": {"content": activity_name}}]},
